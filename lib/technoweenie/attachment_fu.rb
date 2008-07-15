@@ -290,9 +290,16 @@ module Technoweenie # :nodoc:
       #
       # TODO: Allow it to work with Merb tempfiles too.
       def uploaded_data=(file_data)
-        return nil if file_data.nil? || file_data.size == 0
-        self.content_type = file_data.content_type
-        self.filename     = file_data.original_filename if respond_to?(:filename)
+        if file_data.respond_to?(:content_type)
+          return nil if file_data.size == 0
+          self.content_type = file_data.content_type
+          self.filename     = file_data.original_filename if respond_to?(:filename)
+        else
+          return nil if file_data.blank? || file_data['size'] == 0
+          self.content_type = file_data['content_type']
+          self.filename =  file_data['filename']
+          file_data = file_data['tempfile']
+        end
         if file_data.is_a?(StringIO)
           file_data.rewind
           self.temp_data = file_data.read
@@ -364,13 +371,14 @@ module Technoweenie # :nodoc:
         end
 
         def sanitize_filename(filename)
+          return unless filename
           returning filename.strip do |name|
             # NOTE: File.basename doesn't work right with Windows paths on Unix
             # get only the filename, not the whole path
             name.gsub! /^.*(\\|\/)/, ''
 
             # Finally, replace all non alphanumeric, underscore or periods with underscore
-            name.gsub! /[^\w\.\-]/, '_'
+            name.gsub! /[^A-Za-z0-9\.\-]/, '_'
           end
         end
 
